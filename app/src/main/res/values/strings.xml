@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Meister Translator</string>
+    <string name="text_main_title">마이스터 번역기</string>
+    <string name="text_main_btn_video">동영상 선택</string>
+</resources>
