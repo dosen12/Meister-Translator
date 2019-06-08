@@ -47,7 +47,7 @@
         android:layout_height="36dp"
         android:layout_marginStart="24dp"
         android:layout_marginTop="27dp"
-        android:text="현재 한/영 영/한 번역만 지원합니다"
+        android:text="현재 영/한 번역만 지원합니다"
         android:textAlignment="center"
         android:textSize="18dp"
         fbutton:layout_constraintStart_toStartOf="parent"

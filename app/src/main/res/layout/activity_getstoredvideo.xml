@@ -3,26 +3,49 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <android.support.constraint.ConstraintLayout
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:context=".GetStoredVideoActivity">
+        android:layout_height="match_parent">
 
-        <ScrollView
+        <android.support.constraint.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            tools:context=".GetStoredVideoActivity">
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:orientation="vertical" >
+
+                    <android.support.v7.widget.RecyclerView
+                        android:id="@+id/menuListView"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+                </LinearLayout>
+            </ScrollView>
+
+        </android.support.constraint.ConstraintLayout>
+
+        <FrameLayout
+            android:id="@+id/layout"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <LinearLayout
+            <com.github.jlmd.animatedcircleloadingview.AnimatedCircleLoadingView
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:id="@+id/circle_loading_view"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:orientation="vertical" >
+                android:layout_height="match_parent"
+                android:layout_gravity="center|center_horizontal"
+                app:animCircleLoadingView_mainColor="#FFFFFF00"
+                app:animCircleLoadingView_secondaryColor="#FF00FF00"
+                app:animCircleLoadingView_textColor="#FFFFFFFF" />
 
-                <android.support.v7.widget.RecyclerView
-                    android:id="@+id/menuListView"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-            </LinearLayout>
-        </ScrollView>
+        </FrameLayout>
 
-    </android.support.constraint.ConstraintLayout>
+    </FrameLayout>
 </layout>

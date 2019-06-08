@@ -72,6 +72,7 @@ public class GetStoredActivity extends AppCompatActivity {
 
             @Override
             public void item( Uri uri ) {
+
                 if( !ClientExecuter.getExecuting() ) {
                     System.out.println( " >>> 실행하지 않고있다." );
 //                    client = new ClientExecuter( context, ffClient, tttClient, sttClient );
@@ -142,7 +143,9 @@ public class GetStoredActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
 
-        unbindService( serviceClients );
+        if( ClientExecuter.getExecuting() ) {
+            unbindService( serviceClients );
+        }
     }
 
 }
