@@ -1,31 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/frameLayout3"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_marginStart="8dp"
-    android:layout_marginTop="32dp"
-    android:layout_marginEnd="8dp"
-    android:orientation="vertical"
-    tools:context=".MainActivity">
+    android:background="#000000">
 
-    <TextView
-        android:id="@+id/main_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="100dp"
-        android:text="@string/text_main_title"
-        android:textColor="#FFAAAAFF"
-        android:textSize="36sp" />
+    <su.levenetc.android.textsurface.TextSurface
+        android:id="@+id/text_surface"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
 
     <Button
-        android:id="@+id/main_btn_video"
+        android:id="@+id/btn_refresh"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:backgroundTint="#FFAAAAFF"
-        android:text="@string/text_main_btn_video" />
+        android:text="refresh"
+        android:visibility="invisible"
+        app:layout_constraintStart_toStartOf="@+id/text_surface"
+        app:layout_constraintTop_toTopOf="@+id/text_surface" />
 
-</LinearLayout>
+    <Button
+        android:id="@+id/start"
+        android:layout_width="80dp"
+        android:layout_height="50dp"
+        android:layout_marginStart="330dp"
+        android:background="#030966"
+        android:text="시작하기"
+        android:textSize = "20dp"
+        android:textColor="#FFFFFF"
+        app:layout_constraintBottom_toTopOf="@+id/text_surface"
+        app:layout_constraintEnd_toStartOf="@+id/text_surface"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0" />
+
+    <CheckBox
+        android:id="@+id/check_debug"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Debug"
+        android:textColor="#FFFFFF"
+        android:visibility="invisible"
+        app:layout_constraintStart_toStartOf="@+id/text_surface"
+        app:layout_constraintTop_toBottomOf="@+id/btn_refresh" />/
+
+
+</android.support.constraint.ConstraintLayout>

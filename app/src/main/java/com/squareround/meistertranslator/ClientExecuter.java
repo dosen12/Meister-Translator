@@ -1,16 +1,18 @@
 package com.squareround.meistertranslator;
 
+import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Binder;
 import android.os.Environment;
+import android.os.IBinder;
+import android.support.annotation.Nullable;
 import android.util.SparseArray;
 
 import java.io.File;
 import java.util.ArrayList;
 
-import javax.annotation.Nullable;
-
-public class ClientExecuter {
+public class ClientExecuter extends Service {
 
     private Context context;
     private Intent intent;
@@ -32,7 +34,18 @@ public class ClientExecuter {
     private int frameNum = 0;
     private int frameLast = -1;
     private boolean asyncEnd = false;
-    private boolean executing = false;
+    private static boolean executing = false;
+    private ClientBinder binder;
+    public class ClientBinder extends Binder {
+
+        public ClientExecuter getService() {
+            return ClientExecuter.this;
+        }
+
+    }
+
+    public ClientExecuter() {
+    }
 
     public ClientExecuter( Context context, FFMPEGLinker ffClient, TextToTextClient tttClient, SpeechToTextClient sttClient ) {
         this.context = context;
@@ -40,6 +53,26 @@ public class ClientExecuter {
         this.tttClient = tttClient;
         this.sttClient = sttClient;
         this.database = new DBHelper( context, "MeisterTranslator", null, 1 );
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        executing = true;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        executing = false;
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind( Intent intent ) {
+        return binder;
     }
 
     public void execute( String pathFile ) {
@@ -258,7 +291,7 @@ public class ClientExecuter {
 
     }
 
-    public boolean getExecuting() {
+    public static boolean getExecuting() {
         return executing;
     }
 
@@ -282,6 +315,10 @@ public class ClientExecuter {
 
     public void insertDatabase( int index, String file, int startFrame, String subTitle, Integer endFrame ) {
         database.insert( index, file, startFrame, subTitle, endFrame );
+    }
+
+    public void getget() {
+        System.out.println( "getget" );
     }
 
 }

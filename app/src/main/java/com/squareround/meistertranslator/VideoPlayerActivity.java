@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.util.SparseArray;
 import android.widget.MediaController;
 import android.widget.TextView;
-import android.widget.VideoView;
 
 import java.util.ArrayList;
 
@@ -18,6 +17,7 @@ public class VideoPlayerActivity extends AppCompatActivity {
 
     private String subtitle;
     private int controllerHeight;
+    private int position;
     private boolean end = false;
     private SparseArray< String > videoSyncMap;
 
@@ -39,11 +39,19 @@ public class VideoPlayerActivity extends AppCompatActivity {
         videoSyncMap = new SparseArray<>();
         ArrayList< Integer > keys = intent.getIntegerArrayListExtra( "SyncKeys" );
         ArrayList< String > values = intent.getStringArrayListExtra( "SyncValues" );
+        position = 0;
 
         for( int i = 0; ( i < keys.size() ) || ( i < values.size() ); i++ ) {
             videoSyncMap.put( keys.get( i ), values.get( i ) );
         }
+    }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        videoPlayer.seekTo( position );
+        end = false;
         Thread refresher = new Thread( new Runnable() {
 
             @Override
@@ -97,9 +105,11 @@ public class VideoPlayerActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    protected void onPause() {
+        super.onPause();
 
         end = true;
+        position = videoPlayer.getCurrentPosition();
     }
+
 }

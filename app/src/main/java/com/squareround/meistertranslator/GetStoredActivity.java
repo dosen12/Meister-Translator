@@ -23,13 +23,16 @@ import java.util.Vector;
 public class GetStoredActivity extends AppCompatActivity {
 
     private static final int GSV = R.layout.activity_getstoredvideo;
-    ActivityGetstoredvideoBinding binding;
-    Context context = this;
+    private ActivityGetstoredvideoBinding binding;
+    private Context context = this;
+    private Intent intent;
 
-    FFMPEGLinker ffClient;
-    TextToTextClient tttClient;
-    SpeechToTextClient sttClient;
-    ClientExecuter client;
+    private ServiceConnection serviceClients;
+    private ServiceConnection serviceSttClient;
+    private FFMPEGLinker ffClient;
+    private TextToTextClient tttClient;
+    private SpeechToTextClient sttClient;
+    private ClientExecuter client;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -47,16 +50,36 @@ public class GetStoredActivity extends AppCompatActivity {
 
 
 
+        intent = new Intent( GetStoredActivity.this, ClientExecuter.class );
         ffClient = new FFMPEGLinker();
         tttClient = new TextToTextClient( "" );
-        client = new ClientExecuter( context, ffClient, tttClient, sttClient );
+//        client = new ClientExecuter( context, ffClient, tttClient, sttClient );
+        serviceClients = new ServiceConnection() {
+
+            @Override
+            public void onServiceConnected( ComponentName name, IBinder service ) {
+                ClientExecuter.ClientBinder clientBinder = ( ClientExecuter.ClientBinder )service;
+                client = clientBinder.getService();
+                System.out.println( " >>> 실행중..." );
+            }
+
+            @Override
+            public void onServiceDisconnected( ComponentName name ) {
+            }
+
+        };
         adapter.setItemListener( new GSVAdapter.ItemListener() {
 
             @Override
             public void item( Uri uri ) {
-                if( !client.getExecuting() ) {
-                    client = new ClientExecuter( context, ffClient, tttClient, sttClient );
-                    client.execute( uri.toString() );
+                if( !ClientExecuter.getExecuting() ) {
+                    System.out.println( " >>> 실행하지 않고있다." );
+//                    client = new ClientExecuter( context, ffClient, tttClient, sttClient );
+                    bindService( intent, serviceClients, BIND_AUTO_CREATE );
+//                    client.execute( uri.toString() );
+                } else {
+                    System.out.println( " >>> 이미 실행되고 있다." );
+//                    client.getget();
                 }
             }
 
@@ -92,7 +115,7 @@ public class GetStoredActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
-        bindService( new Intent( this, SpeechToTextClient.class ), new ServiceConnection() {
+        serviceSttClient = new ServiceConnection() {
 
             @Override
             public void onServiceConnected( ComponentName name, IBinder service ) {
@@ -101,11 +124,25 @@ public class GetStoredActivity extends AppCompatActivity {
 
             @Override
             public void onServiceDisconnected( ComponentName name ) {
-                sttClient.unbindService( this );
                 sttClient = null;
             }
 
-        }, BIND_AUTO_CREATE );
+        };
+        bindService( new Intent( this, SpeechToTextClient.class ), serviceSttClient, BIND_AUTO_CREATE );
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        unbindService( serviceSttClient );
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        unbindService( serviceClients );
     }
 
 }
