@@ -3,7 +3,6 @@ package com.squareround.meistertranslator;
 import android.os.AsyncTask;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 
 public class ClientAsyncListener< Type extends Client > extends AsyncTask< Void, Void, Boolean > {
 

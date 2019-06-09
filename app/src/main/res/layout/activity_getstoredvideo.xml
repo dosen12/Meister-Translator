@@ -35,15 +35,14 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <com.github.jlmd.animatedcircleloadingview.AnimatedCircleLoadingView
-                xmlns:app="http://schemas.android.com/apk/res-auto"
+            <com.squareround.meistertranslator.ClientLoadingView
                 android:id="@+id/circle_loading_view"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_gravity="center|center_horizontal"
-                app:animCircleLoadingView_mainColor="#FFFFFF00"
-                app:animCircleLoadingView_secondaryColor="#FF00FF00"
-                app:animCircleLoadingView_textColor="#FFFFFFFF" />
+                app:clientLoadingView_mainColor="#FFFFFF00"
+                app:clientLoadingView_secondaryColor="#FF00FF00"
+                app:clientLoadingView_textColor="#FFFFFFFF" />
 
         </FrameLayout>
 

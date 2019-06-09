@@ -52,7 +52,7 @@ public class VideoPlayerActivity extends AppCompatActivity {
 
         videoPlayer.seekTo( position );
         end = false;
-        Thread refresher = new Thread( new Runnable() {
+        ( new Thread( new Runnable() {
 
             @Override
             public void run() {
@@ -100,8 +100,7 @@ public class VideoPlayerActivity extends AppCompatActivity {
                 }
             }
 
-        } );
-        refresher.start();
+        } ) ).start();
     }
 
     @Override

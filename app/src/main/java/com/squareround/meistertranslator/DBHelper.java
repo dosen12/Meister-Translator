@@ -137,7 +137,6 @@ public class DBHelper extends SQLiteOpenHelper {
                 }
             }
         }
-        System.out.println( newSQ + "번쨰에 저장됩니다." );
 
         return newSQ;
     }

@@ -1,12 +1,12 @@
 package com.squareround.meistertranslator;
 
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.databinding.DataBindingUtil;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.Bundle;
@@ -15,7 +15,9 @@ import android.provider.MediaStore;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
+import android.widget.FrameLayout;
 
+import com.github.jlmd.animatedcircleloadingview.AnimatedCircleLoadingView;
 import com.squareround.meistertranslator.databinding.ActivityGetstoredvideoBinding;
 
 import java.util.Vector;
@@ -24,8 +26,7 @@ public class GetStoredActivity extends AppCompatActivity {
 
     private static final int GSV = R.layout.activity_getstoredvideo;
     private ActivityGetstoredvideoBinding binding;
-    private Context context = this;
-    private Intent intent;
+    private boolean started = false;
 
     private ServiceConnection serviceClients;
     private ServiceConnection serviceSttClient;
@@ -33,6 +34,21 @@ public class GetStoredActivity extends AppCompatActivity {
     private TextToTextClient tttClient;
     private SpeechToTextClient sttClient;
     private ClientExecuter client;
+    private FrameLayout layout;
+    private ClientLoadingView clientLoadingView;
+    private String pathFile;
+
+    @Override
+    public void onBackPressed() {
+        if( ClientExecuter.getExecuting() ) {
+            unbindService( serviceClients );
+            clientLoadingView.setProgress( 0, 300 );
+            clientLoadingView.stopFailure();
+            bindService( new Intent( this, ClientExecuter.class ), serviceClients, BIND_AUTO_CREATE );
+        } else {
+            super.onBackPressed();
+        }
+    }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -50,43 +66,57 @@ public class GetStoredActivity extends AppCompatActivity {
 
 
 
-        intent = new Intent( GetStoredActivity.this, ClientExecuter.class );
+        layout = findViewById( R.id.layout );
+        clientLoadingView = findViewById( R.id.circle_loading_view );
+        clientLoadingView.startDeterminate();
+        clientLoadingView.setAnimationListener( new AnimatedCircleLoadingView.AnimationListener() {
+
+            @Override
+            public void onAnimationEnd( final boolean success ) {
+                runOnUiThread( new Runnable() {
+
+                    @Override
+                    public void run() {
+                        layout.setBackgroundColor( Color.argb( 0, 0, 100, 200 ) );
+                        clientLoadingView.getViewAnimator().hideChildViews();
+                        if( success ) {
+                            if( ( client.getListKey() != null ) && ( client.getListValue() != null ) && !started ) {
+                                System.out.println( " >>> dydy" );
+                                started = true;
+                                Intent intent = new Intent( getApplicationContext(), VideoPlayerActivity.class );
+                                intent.putExtra( "URI", pathFile );
+                                intent.putIntegerArrayListExtra( "SyncKeys", client.getListKey() );
+                                intent.putStringArrayListExtra( "SyncValues", client.getListValue() );
+                                startActivity( intent );
+                            }
+                        }
+                    }
+
+                });
+
+            }
+
+        });
         ffClient = new FFMPEGLinker();
         tttClient = new TextToTextClient( "" );
-//        client = new ClientExecuter( context, ffClient, tttClient, sttClient );
-        serviceClients = new ServiceConnection() {
-
-            @Override
-            public void onServiceConnected( ComponentName name, IBinder service ) {
-                ClientExecuter.ClientBinder clientBinder = ( ClientExecuter.ClientBinder )service;
-                client = clientBinder.getService();
-                System.out.println( " >>> 실행중..." );
-            }
-
-            @Override
-            public void onServiceDisconnected( ComponentName name ) {
-            }
-
-        };
         adapter.setItemListener( new GSVAdapter.ItemListener() {
 
             @Override
             public void item( Uri uri ) {
 
                 if( !ClientExecuter.getExecuting() ) {
-                    System.out.println( " >>> 실행하지 않고있다." );
-//                    client = new ClientExecuter( context, ffClient, tttClient, sttClient );
-                    bindService( intent, serviceClients, BIND_AUTO_CREATE );
-//                    client.execute( uri.toString() );
-                } else {
-                    System.out.println( " >>> 이미 실행되고 있다." );
-//                    client.getget();
+                    started = false;
+                    pathFile = uri.toString();
+                    layout.setBackgroundColor( Color.argb( 255, 0, 100, 200 ) );
+                    clientLoadingView.reset();
+                    clientLoadingView.startIndeterminate();
+                    client.startClients( ffClient, tttClient, sttClient, clientLoadingView, pathFile );
                 }
+
             }
 
         } );
     }
-
 
     private Vector<Menu> getVideo() {
         String[] proj = {MediaStore.Video.Media._ID,
@@ -116,6 +146,20 @@ public class GetStoredActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
+        serviceClients = new ServiceConnection() {
+
+            @Override
+            public void onServiceConnected( ComponentName name, IBinder service ) {
+                ClientExecuter.ClientBinder clientBinder = ( ClientExecuter.ClientBinder )service;
+                client = clientBinder.getService();
+            }
+
+            @Override
+            public void onServiceDisconnected( ComponentName name ) {
+                client = null;
+            }
+
+        };
         serviceSttClient = new ServiceConnection() {
 
             @Override
@@ -129,6 +173,7 @@ public class GetStoredActivity extends AppCompatActivity {
             }
 
         };
+        bindService( new Intent( this, ClientExecuter.class ), serviceClients, BIND_AUTO_CREATE );
         bindService( new Intent( this, SpeechToTextClient.class ), serviceSttClient, BIND_AUTO_CREATE );
     }
 
@@ -136,16 +181,9 @@ public class GetStoredActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
 
+        unbindService( serviceClients );
         unbindService( serviceSttClient );
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-
-        if( ClientExecuter.getExecuting() ) {
-            unbindService( serviceClients );
-        }
+        System.out.println( " >>> 종료되었다." );
     }
 
 }

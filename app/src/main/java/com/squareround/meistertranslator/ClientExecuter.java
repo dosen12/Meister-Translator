@@ -1,7 +1,6 @@
 package com.squareround.meistertranslator;
 
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.Environment;
@@ -14,8 +13,6 @@ import java.util.ArrayList;
 
 public class ClientExecuter extends Service {
 
-    private Context context;
-    private Intent intent;
     private FFMPEGLinker ffClient;
     private TextToTextClient tttClient;
     private SpeechToTextClient sttClient;
@@ -26,6 +23,7 @@ public class ClientExecuter extends Service {
     private ArrayList< Integer > listKey;
     private ArrayList< String > listValue;
     private DBHelper database;
+    private ClientLoadingView clientLoadingView;
 
     private String pathExtonal = Environment.getExternalStorageDirectory().getPath();
     private String pathProject = "/tmp/MeisterTranslator";
@@ -34,6 +32,8 @@ public class ClientExecuter extends Service {
     private int frameNum = 0;
     private int frameLast = -1;
     private boolean asyncEnd = false;
+    private int progressMax = 0;
+    private int progress = 0;
     private static boolean executing = false;
     private ClientBinder binder;
     public class ClientBinder extends Binder {
@@ -44,29 +44,60 @@ public class ClientExecuter extends Service {
 
     }
 
-    public ClientExecuter() {
-    }
-
-    public ClientExecuter( Context context, FFMPEGLinker ffClient, TextToTextClient tttClient, SpeechToTextClient sttClient ) {
-        this.context = context;
-        this.ffClient = ffClient;
-        this.tttClient = tttClient;
-        this.sttClient = sttClient;
-        this.database = new DBHelper( context, "MeisterTranslator", null, 1 );
-    }
-
     @Override
     public void onCreate() {
         super.onCreate();
 
-        executing = true;
+        binder = new ClientBinder();
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
+    private void threadstart() {
+//        Thread detector = new Thread( new Runnable() {
+//
+//            @Override
+//            public void run() {
+                sttClient.resourceAdd( pathExtonal + pathProject + pathDestination );
+                sttClient.setLanguageCode( "en-US" );
+                clients = new ClientAsyncListener<>();
+                clients.clientClear();
+                clients.clientAdd( sttClient );
+                clients.setResponser( new ClientAsyncListener.AsyncResponse() {
 
-        executing = false;
+                    @Override
+                    public void responseCommand() {
+                        for( SparseArray< String > map : sttClient.getResult() ) {
+                            for( int i = 0; i < map.size(); i++ ) {
+                                System.out.println( map.keyAt( i ) + " >>> " + map.get( map.keyAt( i ) ) );
+                            }
+                        }
+                        Thread ttt = new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                for( progress = 0; progress <= progressMax; progress++ ) {
+                                    System.out.println( " >>> " + progress );
+                                    clientLoadingView.setProgress( progress, progressMax );
+                                    try {
+                                    Thread.sleep( 100 );
+                                    } catch( InterruptedException e ) {
+                                        e.printStackTrace();
+                                    }
+                                    if( !executing ) {
+                                        clientLoadingView.stopFailure();
+                                        break;
+                                    }
+                                    System.out.println( " >>> " + progress );
+                                }
+                            }
+                        });
+                        ttt.start();
+                    }
+
+                } );
+                clients.execute();
+//            }
+//
+//        } );
+//        detector.start();
     }
 
     @Nullable
@@ -75,10 +106,29 @@ public class ClientExecuter extends Service {
         return binder;
     }
 
-    public void execute( String pathFile ) {
+    @Override
+    public boolean onUnbind( Intent intent ) {
+        executing = false;
+
+        return super.onUnbind( intent );
+    }
+
+    public void startClients( FFMPEGLinker ffClient, TextToTextClient tttClient, SpeechToTextClient sttClient, ClientLoadingView clientLoadingView1, String pathFile ) {
+        this.ffClient = ffClient;
+        this.tttClient = tttClient;
+        this.sttClient = sttClient;
+        this.clientLoadingView = clientLoadingView1;
+        this.database = new DBHelper( this, "MeisterTranslator", null, 1 );
         executing = true;
+
+        progressMax = 50;
+        execute( pathFile );
+    }
+
+    public void execute( String pathFile ) {
+        clientLoadingView.setProgress( 1, 300 );
         pathTarget = pathFile;
-        if( loadDatabase( pathTarget ) <= 0 ) { //&& false ) {
+        if( loadDatabase( pathTarget ) <= 0 ) { //|| true ) {
             new File( pathExtonal + pathProject ).mkdirs();
             ffClient.convertMP4toWAV( pathFile, pathExtonal + pathProject + pathDestination );
             int splits = ffClient.audioSplit( pathExtonal + pathProject + pathDestination, "15" );
@@ -95,100 +145,114 @@ public class ClientExecuter extends Service {
 
                 @Override
                 public void responseCommand() {
-                    result = sttClient.getResult();
-                    frameNum = 0;
-
-                    for( int num = 0; num < result.size(); num++ ) {
-                        for( int test = 0; test < result.get( num ).size(); test++ ) { // 테스트 입니다.
-                            if( result.get( num ).get( test ) != null ) {
-                                frameNum += result.get( num ).get( test ).length();
-                            }
-                        }
-//                        frameNum += ( result.get( num ) ).size();
-                        if( sttClient.getClientEndFrame( num ) > 0 ) {
-                            int endFrame = ( num * 15 * 1000 ) + sttClient.getClientEndFrame( num );
-                            frameLast = frameLast >= endFrame ? frameLast : endFrame;
-                        }
-                    }
-
-                    sttClient.setLanguageCode( "ko-KR" );
-                    clients = new ClientAsyncListener<>();
-                    clients.clientClear();
-                    clients.clientAdd( sttClient );
-                    clients.setResponser( new ClientAsyncListener.AsyncResponse() {
+                    ( new Thread( new Runnable() {
 
                         @Override
-                        public void responseCommand() {
+                        public void run() {
                             result = sttClient.getResult();
-                            int frameCount = 0;
-                            int frameEnd = -1;
-                            int offset = 0;
-                            int plus = 0;
+                            frameNum = 0;
 
                             for( int num = 0; num < result.size(); num++ ) {
                                 for( int test = 0; test < result.get( num ).size(); test++ ) { // 테스트 입니다.
                                     if( result.get( num ).get( test ) != null ) {
-                                        frameCount += result.get( num ).get( test ).length();
+                                        frameNum += result.get( num ).get( test ).length();
                                     }
                                 }
-                                frameCount += ( result.get( num) ).size();
+//                                frameNum += ( result.get( num ) ).size();
                                 if( sttClient.getClientEndFrame( num ) > 0 ) {
                                     int endFrame = ( num * 15 * 1000 ) + sttClient.getClientEndFrame( num );
-                                    frameEnd = frameEnd >= endFrame ? frameEnd : endFrame;
+                                    frameLast = frameLast >= endFrame ? frameLast : endFrame;
                                 }
                             }
-                            System.out.println( "en = " + frameNum + " :: ko = " + frameCount );
-                            if( ( frameNum < frameCount )  ) { // || ( frameCount >= 10 )
-                                sttClient.setLanguageCode( "ko-KR" );
-                                frameLast = frameEnd;
-                            } else {
-                                sttClient.setLanguageCode( "en-US" );
-                            }
 
-                            syncMap = new SparseArray<>();
-                            syncTokenNum = new ArrayList<>();
-                            while( offset < frameLast ) {
-                                ffClient.audioCut( pathExtonal + pathProject + pathDestination, pathExtonal + pathProject + "/slice.wav", Double.toString( offset / ( double )1000 ), Double.toString( ( offset / ( double )1000 ) + 15 ) );
-                                sttClient.resourceClear();
-                                sttClient.resourceAdd( pathExtonal + pathProject + "/slice.wav" );
-                                clients = new ClientAsyncListener<>();
-                                clients.clientClear();
-                                clients.clientAdd( sttClient );
-                                clients.execute();
-                                while( !sttClient.getSuccess() );
+                            sttClient.setLanguageCode( "ko-KR" );
+                            clients = new ClientAsyncListener<>();
+                            clients.clientClear();
+                            clients.clientAdd( sttClient );
+                            clients.setResponser( new ClientAsyncListener.AsyncResponse() {
 
-                                result = sttClient.getResult();
-                                for( SparseArray< String > sync : result ) {
-                                    for( int i = 0; i < sync.size(); i++ ) {
-                                        int key = sync.keyAt( i );
-                                        syncMap.put( key + offset, sync.get( key ) );
-                                        if( plus < key + offset ) {
-                                            plus = key + offset;
+                                @Override
+                                public void responseCommand() {
+                                    ( new Thread( new Runnable() {
+
+                                        @Override
+                                        public void run() {
+                                            result = sttClient.getResult();
+                                            int frameCount = 0;
+                                            int frameEnd = -1;
+                                            int offset = 0;
+                                            int plus = 0;
+
+                                            for( int num = 0; num < result.size(); num++ ) {
+                                                for( int test = 0; test < result.get( num ).size(); test++ ) { // 테스트 입니다.
+                                                    if( result.get( num ).get( test ) != null ) {
+                                                        frameCount += result.get( num ).get( test ).length();
+                                                    }
+                                                }
+                                                frameCount += ( result.get( num ) ).size();
+                                                if( sttClient.getClientEndFrame( num ) > 0 ) {
+                                                    int endFrame = ( num * 15 * 1000 ) + sttClient.getClientEndFrame( num );
+                                                    frameEnd = frameEnd >= endFrame ? frameEnd : endFrame;
+                                                }
+                                            }
+                                            System.out.println( " >>> en = " + frameNum + " :: ko = " + frameCount );
+                                            if( ( frameNum < frameCount )  ) { // || ( frameCount >= 10 )
+                                                sttClient.setLanguageCode( "ko-KR" );
+                                                frameLast = frameEnd;
+                                            } else {
+                                                sttClient.setLanguageCode( "en-US" );
+                                            }
+
+                                            syncMap = new SparseArray<>();
+                                            syncTokenNum = new ArrayList<>();
+                                            while( offset < frameLast ) {
+                                                ffClient.audioCut( pathExtonal + pathProject + pathDestination, pathExtonal + pathProject + "/slice.wav", Double.toString( offset / ( double )1000 ), Double.toString( ( offset / ( double )1000 ) + 15 ) );
+                                                sttClient.resourceClear();
+                                                sttClient.resourceAdd( pathExtonal + pathProject + "/slice.wav" );
+                                                clients = new ClientAsyncListener<>();
+                                                clients.clientClear();
+                                                clients.clientAdd( sttClient );
+                                                clients.execute();
+                                                while( !sttClient.getSuccess() );
+
+                                                result = sttClient.getResult();
+                                                for( SparseArray< String > sync : result ) {
+                                                    for( int i = 0; i < sync.size(); i++ ) {
+                                                        int key = sync.keyAt( i );
+                                                        syncMap.put( key + offset, sync.get( key ) );
+                                                        if( plus < key + offset ) {
+                                                            plus = key + offset;
+                                                        }
+                                                    }
+                                                }
+                                                for( ArrayList< Integer > tokens : sttClient.getSyncTokenNum() ) {
+                                                    for( int token : tokens ) {
+                                                        syncTokenNum.add( token + offset );
+                                                    }
+                                                }
+                                                if( plus <= offset ) {
+                                                    offset += 10 * 1000;
+                                                } else {
+                                                    offset = plus;
+                                                }
+                                            }
+                                            asyncEnd = true;
                                         }
-                                    }
+
+                                    } ) ).start();
                                 }
-                                for( ArrayList< Integer > tokens : sttClient.getSyncTokenNum() ) {
-                                    for( int token : tokens ) {
-                                        syncTokenNum.add( token + offset );
-                                    }
-                                }
-                                if( plus <= offset ) {
-                                    offset += 10 * 1000;
-                                } else {
-                                    offset = plus;
-                                }
-                            }
-                            asyncEnd = true;
+
+                            } );
+                            clients.execute();
                         }
 
-                    } );
-                    clients.execute();
+                    } ) ).start();
                 }
 
             } );
             clients.execute();
 
-            Thread detector = new Thread( new Runnable() {
+            ( new Thread( new Runnable() {
 
                 @Override
                 public void run() {
@@ -198,6 +262,7 @@ public class ClientExecuter extends Service {
 
                     for( int i = 0; i < syncMap.size(); i++ ) {
                         int key = syncMap.keyAt( i );
+                        System.out.println( key + " >>> " + syncMap.get( key ) );
                         String value = "";
 
                         if( sttClient.getLanguageCode().equals( "en-US" ) ) {
@@ -242,7 +307,6 @@ public class ClientExecuter extends Service {
                             while( !tttClient.getSuccess() );
 
                             String[] subResult = tttClient.getResult().split( " " );
-//                            String[] subResult = source.split( " " );
                             if ( subResult.length == 0 ) {
                                 continue;
                             }
@@ -268,31 +332,23 @@ public class ClientExecuter extends Service {
                             insertDatabase( getSquence( pathTarget ), pathTarget, key, value, null );
                         }
                     }
-
-                    executing = false;
-                    intent = new Intent( context, VideoPlayerActivity.class );
-                    intent.putExtra( "URI", pathTarget );
-                    intent.putIntegerArrayListExtra( "SyncKeys", listKey );
-                    intent.putStringArrayListExtra( "SyncValues", listValue );
-                    context.startActivity( intent );
+                    clientLoadingView.stopOk();
                 }
 
-            } );
-            detector.start();
-        } else {
-            System.out.println( "성공적으로 불러왔습니다." );
-            executing = false;
-            intent = new Intent( context, VideoPlayerActivity.class );
-            intent.putExtra( "URI", pathTarget );
-            intent.putIntegerArrayListExtra( "SyncKeys", listKey );
-            intent.putStringArrayListExtra( "SyncValues", listValue );
-            context.startActivity( intent );
+            } ) ).start();
         }
-
     }
 
     public static boolean getExecuting() {
         return executing;
+    }
+
+    public ArrayList< Integer > getListKey() {
+        return this.listKey;
+    }
+
+    public ArrayList< String > getListValue() {
+        return this.listValue;
     }
 
     public int getSquence( String uri ) {
@@ -305,9 +361,21 @@ public class ClientExecuter extends Service {
         listKey = new ArrayList<>();
         listValue = new ArrayList<>();
         syncMap = database.loadData( uri );
+        progressMax = syncMap.size();
         for( key = 0; key < syncMap.size(); key++ ) {
+            progress = key;
+            if( !executing ) {
+                break;
+            }
             listKey.add( syncMap.keyAt( key ) );
             listValue.add( syncMap.get( syncMap.keyAt( key ) ) );
+            clientLoadingView.setProgress( progress, progressMax );
+        }
+        if( executing ) {
+            progress = key;
+            clientLoadingView.setProgress( progress, progressMax );
+        } else {
+            clientLoadingView.stopFailure();
         }
 
         return key;
@@ -317,8 +385,10 @@ public class ClientExecuter extends Service {
         database.insert( index, file, startFrame, subTitle, endFrame );
     }
 
-    public void getget() {
-        System.out.println( "getget" );
+
+
+    public int[] getProgress() {
+        return new int[] { progress, progressMax };
     }
 
 }

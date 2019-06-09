@@ -7,6 +7,13 @@
         <attr name="shadowHeight" format="dimension" />
         <attr name="cornerRadius" format="dimension" />
     </declare-styleable>
+    <declare-styleable name="ClientLoadingView">
+        <attr name="clientLoadingView_mainColor" format="color" localization="suggested" />
+        <attr name="clientLoadingView_secondaryColor" format="color" localization="suggested" />
+        <attr name="clientLoadingView_checkMarkTintColor" format="color" localization="suggested" />
+        <attr name="clientLoadingView_failureMarkTintColor" format="color" localization="suggested" />
+        <attr name="clientLoadingView_textColor" format="color" localization="suggested" />
+    </declare-styleable>
     <declare-styleable name="AnimatedCircleLoadingView">
         <attr name="animCircleLoadingView_mainColor" format="color" localization="suggested" />
         <attr name="animCircleLoadingView_secondaryColor" format="color" localization="suggested" />
