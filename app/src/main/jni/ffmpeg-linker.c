@@ -108,17 +108,36 @@ JNIEXPORT jstring JNICALL Java_com_squareround_meistertranslator_FFMPEGLinker_co
     return dst;
 }
 
-JNIEXPORT jint JNICALL Java_com_squareround_meistertranslator_FFMPEGLinker_audioCut( JNIEnv* env, jobject instance, jstring url, jstring dst, jstring startTime, jstring endTime ) {
+JNIEXPORT jdouble JNICALL Java_com_squareround_meistertranslator_FFMPEGLinker_audioCut( JNIEnv* env, jobject instance, jstring url, jstring dst, jstring startTime, jstring endTime, jint flag ) {
     const char* strUrl = ( *env )->GetStringUTFChars( env, url, 0 );
     const char* strDst = ( *env )->GetStringUTFChars( env, dst, 0 );
     const char* strStartTime = ( *env )->GetStringUTFChars( env, startTime, 0 );
     const char* strEndTime = ( *env )->GetStringUTFChars( env, endTime, 0 );
+    const int cutFlag = ( int )flag;
     char* cmdUrl = ( char* )strUrl;
     char* cmdDst = ( char* )strDst;
     char* cmdStartTime = ( char* )strStartTime;
     char* cmdEndTime = ( char* )strEndTime;
     char* commands[ 10 ];
     char** argv = &commands[ 0 ];
+    double cutFront = 0;
+    double cutBack = 0;
+    AVFormatContext* context = NULL;
+
+    if( avformat_open_input( &context, cmdUrl, NULL, NULL ) < 0 )
+    {
+        LOGE( "Can't open input file '%s'", cmdUrl );
+        ( *env )->ReleaseStringUTFChars( env, url, cmdUrl );
+        return -1;
+    }
+    if( avformat_find_stream_info( context, NULL ) < 0 )
+    {
+        LOGE( "Failed to retrieve input stream information" );
+        ( *env )->ReleaseStringUTFChars( env, url, cmdUrl );
+        return -2;
+    }
+    cutFront = strtod( cmdStartTime, NULL );
+    cutBack = ( context->duration / ( double )1000000 ) - strtod( cmdEndTime, NULL );
 
     commands[ 0 ] = "ffmpeg";
     commands[ 1 ] = "-i";
@@ -132,10 +151,10 @@ JNIEXPORT jint JNICALL Java_com_squareround_meistertranslator_FFMPEGLinker_audio
     commands[ 9 ] = cmdDst;
     execute( 10, argv );
 
-    return 0;
+    return cutFlag == 0 ? cutFront : cutBack;
 }
 
-JNIEXPORT jint JNICALL Java_com_squareround_meistertranslator_FFMPEGLinker_audioCutFront( JNIEnv* env, jobject instance, jstring url, jstring dst, jstring time ) {
+JNIEXPORT jdouble JNICALL Java_com_squareround_meistertranslator_FFMPEGLinker_audioCutFront( JNIEnv* env, jobject instance, jstring url, jstring dst, jstring time ) {
     const char* strUrl = ( *env )->GetStringUTFChars( env, url, 0 );
     const char* strDst = ( *env )->GetStringUTFChars( env, dst, 0 );
     const char* strTime = ( *env )->GetStringUTFChars( env, time, 0 );
@@ -144,6 +163,9 @@ JNIEXPORT jint JNICALL Java_com_squareround_meistertranslator_FFMPEGLinker_audio
     char* cmdTime = ( char* )strTime;
     char* commands[ 10 ];
     char** argv = &commands[ 0 ];
+    double cutPosition = 0;
+
+    cutPosition = strtod( cmdTime, NULL );
 
     commands[ 0 ] = "ffmpeg";
     commands[ 1 ] = "-i";
@@ -155,7 +177,7 @@ JNIEXPORT jint JNICALL Java_com_squareround_meistertranslator_FFMPEGLinker_audio
     commands[ 7 ] = cmdDst;
     execute( 8, argv );
 
-    return 0;
+    return cutPosition;
 }
 
 JNIEXPORT jdouble JNICALL Java_com_squareround_meistertranslator_FFMPEGLinker_audioCutBack( JNIEnv* env, jobject instance, jstring url, jstring dst, jstring time ) {

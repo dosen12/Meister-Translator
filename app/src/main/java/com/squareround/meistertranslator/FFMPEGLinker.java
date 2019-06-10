@@ -16,9 +16,9 @@ public class FFMPEGLinker {
 
     public native String convertMP4toWAV( String url, String dst );
 
-    public native int audioCut( String url, String dst, String startTime, String endTime );
+    public native double audioCut( String url, String dst, String startTime, String endTime, int flag );
 
-    public native int audioCutFront( String url, String dst, String time );
+    public native double audioCutFront( String url, String dst, String time );
 
     public native double audioCutBack( String url, String dst, String time );
 

@@ -31,7 +31,7 @@ public class ClientLoadingView extends AnimatedCircleLoadingView {
 
             @Override
             public void run() {
-                changePercent( Math.round( ( float )( progress * 100 ) / ( float )progressMax ) );
+                changePercent( Math.min( Math.max( Math.round( ( float )( progress * 100 ) / ( float )progressMax ), 0 ), 100 ) );
             }
 
         }) ).start();

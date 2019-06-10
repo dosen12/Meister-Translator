@@ -15,7 +15,7 @@
         android:theme="@style/AppTheme">
         <activity android:name=".MainActivity2"></activity>
         <activity android:name=".VideoPlayerActivity"
-            android:screenOrientation="landscape"></activity>
+            android:screenOrientation="sensorLandscape"></activity>
         <activity android:name=".GetStoredActivity"></activity>
         <activity android:name=".MainActivity">
             <intent-filter>

@@ -37,6 +37,8 @@ public class GetStoredActivity extends AppCompatActivity {
     private FrameLayout layout;
     private ClientLoadingView clientLoadingView;
     private String pathFile;
+    private boolean inBackground;
+    private boolean comebackStart;
 
     @Override
     public void onBackPressed() {
@@ -66,6 +68,35 @@ public class GetStoredActivity extends AppCompatActivity {
 
 
 
+        serviceClients = new ServiceConnection() {
+
+            @Override
+            public void onServiceConnected( ComponentName name, IBinder service ) {
+                ClientExecuter.ClientBinder clientBinder = ( ClientExecuter.ClientBinder )service;
+                client = clientBinder.getService();
+            }
+
+            @Override
+            public void onServiceDisconnected( ComponentName name ) {
+                client = null;
+            }
+
+        };
+        serviceSttClient = new ServiceConnection() {
+
+            @Override
+            public void onServiceConnected( ComponentName name, IBinder service ) {
+                sttClient = SpeechToTextClient.from( service );
+            }
+
+            @Override
+            public void onServiceDisconnected( ComponentName name ) {
+                sttClient = null;
+            }
+
+        };
+        bindService( new Intent( this, ClientExecuter.class ), serviceClients, BIND_AUTO_CREATE );
+        bindService( new Intent( this, SpeechToTextClient.class ), serviceSttClient, BIND_AUTO_CREATE );
         layout = findViewById( R.id.layout );
         clientLoadingView = findViewById( R.id.circle_loading_view );
         clientLoadingView.startDeterminate();
@@ -80,14 +111,17 @@ public class GetStoredActivity extends AppCompatActivity {
                         layout.setBackgroundColor( Color.argb( 0, 0, 100, 200 ) );
                         clientLoadingView.getViewAnimator().hideChildViews();
                         if( success ) {
-                            if( ( client.getListKey() != null ) && ( client.getListValue() != null ) && !started ) {
-                                System.out.println( " >>> dydy" );
+                            if( ( client.getListKey() != null ) && ( client.getListValue() != null ) && !started && !inBackground ) {
                                 started = true;
                                 Intent intent = new Intent( getApplicationContext(), VideoPlayerActivity.class );
                                 intent.putExtra( "URI", pathFile );
                                 intent.putIntegerArrayListExtra( "SyncKeys", client.getListKey() );
                                 intent.putStringArrayListExtra( "SyncValues", client.getListValue() );
                                 startActivity( intent );
+                                unbindService( serviceClients );
+                                bindService( new Intent( getApplicationContext(), ClientExecuter.class ), serviceClients, BIND_AUTO_CREATE );
+                            } else if( inBackground ) {
+                                comebackStart = true;
                             }
                         }
                     }
@@ -143,47 +177,36 @@ public class GetStoredActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onStart() {
-        super.onStart();
-
-        serviceClients = new ServiceConnection() {
-
-            @Override
-            public void onServiceConnected( ComponentName name, IBinder service ) {
-                ClientExecuter.ClientBinder clientBinder = ( ClientExecuter.ClientBinder )service;
-                client = clientBinder.getService();
-            }
-
-            @Override
-            public void onServiceDisconnected( ComponentName name ) {
-                client = null;
-            }
-
-        };
-        serviceSttClient = new ServiceConnection() {
-
-            @Override
-            public void onServiceConnected( ComponentName name, IBinder service ) {
-                sttClient = SpeechToTextClient.from( service );
-            }
-
-            @Override
-            public void onServiceDisconnected( ComponentName name ) {
-                sttClient = null;
-            }
-
-        };
-        bindService( new Intent( this, ClientExecuter.class ), serviceClients, BIND_AUTO_CREATE );
-        bindService( new Intent( this, SpeechToTextClient.class ), serviceSttClient, BIND_AUTO_CREATE );
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
+    protected void onDestroy() {
+        super.onDestroy();
 
         unbindService( serviceClients );
         unbindService( serviceSttClient );
-        System.out.println( " >>> 종료되었다." );
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        comebackStart = false;
+        inBackground = true;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        inBackground = false;
+        if( comebackStart ) {
+            comebackStart = false;
+            Intent intent = new Intent( getApplicationContext(), VideoPlayerActivity.class );
+            intent.putExtra( "URI", pathFile );
+            intent.putIntegerArrayListExtra( "SyncKeys", client.getListKey() );
+            intent.putStringArrayListExtra( "SyncValues", client.getListValue() );
+            startActivity( intent );
+            unbindService( serviceClients );
+            bindService( new Intent( this, ClientExecuter.class ), serviceClients, BIND_AUTO_CREATE );
+        }
     }
 
 }

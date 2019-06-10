@@ -54,6 +54,7 @@ public class GSVAdapter extends RecyclerView.Adapter<GSVAdapter.GSVHolder> {
                 if( !ClientExecuter.getExecuting() ) {
                     new FancyAlertDialog.Builder(activity)
                     .setTitle("이 동영상을 번역하시겠습니까?")
+                    .setMessage( uri.toString().substring( uri.toString().lastIndexOf( "/" ) + 1, uri.toString().length() ) )
                     .setBackgroundColor(Color.parseColor("#FFF39C12"))  //Don't pass R.color.colorvalue
                     .setNegativeBtnText("취소")
                     .setPositiveBtnBackground(Color.parseColor("#FFF39C12"))  //Don't pass R.color.colorvalue
